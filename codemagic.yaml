@@ -1,49 +1,66 @@
 workflows:
-  ios-development:
-    name: iOS Development Build IPA
+  ios-unsigned-build:
+    name: iOS Unsigned Build (Flutter 3.24.4)
     environment:
-      flutter: stable  # or specific version like "3.19.5"
-      xcode: latest    # or specific version like "15.2"
-      cocoapods: default
+      flutter: "3.24.4"  # Pinned to your exact version
+      xcode: "15.3"      # Recommended for Flutter 3.24.x
+      cocoapods: "1.15.2" # Stable version for this setup
     scripts:
-      # 1. Initialize Flutter
-      - name: Set up Flutter
+      # Phase 1: Project Initialization
+      - name: Validate Environment
         script: |
           flutter --version
+          dart --version
+          xcodebuild -version
+
+      # Phase 2: Dependency Setup
+      - name: Get Flutter Dependencies
+        script: |
           flutter clean
           flutter pub get
-          flutter precache --ios
+          flutter precache --ios --android
 
-      # 2. Prepare iOS dependencies
-      - name: Pod setup
+      # Phase 3: iOS-Specific Preparation
+      - name: Prepare iOS Environment
         script: |
           cd ios
-          pod deintegrate  # Clean existing pods
+          pod deintegrate
+          pod cache clean --all
           pod repo update
-          pod install --repo-update
+          pod install --verbose
           cd ..
+          # Ensure Generated.xcconfig exists
+          ls ios/Flutter/Generated.xcconfig || flutter pub get
 
-      # 3. Build unsigned IPA (works for simulator/testing)
-      - name: Build IPA
+      # Phase 4: Build Commands (Fixed Format)
+      - name: Build Debug IPA
         script: |
           flutter build ipa \
-            --debug \         # or --profile for performance testing
-            --no-codesign \   # Bypasses Apple Developer account requirement
+            --debug \
+            --no-codesign \
+            --dart-define=CI_BUILD=true \
+            --verbose
+
+      # Phase 5: Fallback Simulator Build
+      - name: Build Simulator Backup
+        script: |
+          flutter build ios \
+            --debug \
+            --simulator \
+            --no-codesign \
             --dart-define=CI_BUILD=true
 
-      # Optional: Build for simulator (alternative to IPA)
-      - name: Build iOS Simulator App
-        script: |
-          flutter build ios --debug --simulator
     artifacts:
-      - build/ios/ipa/*.ipa               # Unsigned IPA file
-      - build/ios/iphonesimulator/*.app   # Simulator app bundle
-      - flutter_drive.log                 # Build logs
+      - build/ios/ipa/*.ipa
+      - build/ios/iphonesimulator/Runner.app
+      - flutter_build.log
+
     publishing:
       email:
         recipients:
           - your.email@example.com
       scripts:
-        - name: Notify Success
+        - name: Archive Build Logs
           script: |
-            echo "IPA built successfully! Download from Artifacts section."
+            flutter doctor -v > flutter_doctor.log
+            cp $CM_BUILD_LOG flutter_build.log
