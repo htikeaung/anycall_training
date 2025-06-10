@@ -1,6 +1,6 @@
 workflows:
   ios-development:
-    name: iOS Development Build
+    name: iOS Development Build IPA
     environment:
       flutter: stable  # or specific version like "3.19.5"
       xcode: latest    # or specific version like "15.2"
