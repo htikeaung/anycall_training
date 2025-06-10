@@ -1,6 +1,6 @@
 workflows:
-  ios-build:
-    name: iOS Codemagic Build
+  ios-unsigned:
+    name: iOS Unsigned Workflow
     environment:
       flutter: stable
       xcode: 15.2
@@ -8,9 +8,7 @@ workflows:
     scripts:
       - name: Install dependencies
         script: flutter pub get
-      - name: Build iOS
-        script: |
-          flutter clean
-          flutter build ipa --release
+      - name: Build IPA (unsigned)
+        script: flutter build ipa --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
