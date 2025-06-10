@@ -1,41 +1,46 @@
 workflows:
-  absolute-ipa-build:
-    name: Absolute IPA Build
+  reliable-ipa-build:
+    name: Reliable IPA Build
     environment:
       flutter: "3.24.4"
       xcode: "15.3"
     scripts:
-      - name: Complete Environment Reset
+      - name: Ensure Flutter Engine
         script: |
-          # Full cleanup
-          flutter clean
-          rm -rf ios/Flutter ios/Pods ios/.symlinks
+          # Force download of iOS artifacts
           flutter precache --ios
-
-      - name: Framework & Module Setup
-        script: |
-          # Recreate Flutter framework structure
-          mkdir -p ios/Flutter
-          cp -R $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
           
-          # Create modulemap file to fix Swift imports
+          # Verify engine exists
+          FLUTTER_ENGINE="$FLUTTER_ROOT/bin/cache/artifacts/engine/ios"
+          if [ ! -d "$FLUTTER_ENGINE" ]; then
+            echo "Flutter engine missing, downloading..."
+            flutter doctor -v
+            flutter pub get
+            flutter precache --force --ios
+          fi
+
+      - name: Setup Framework Structure
+        script: |
+          # Create framework directory structure
+          mkdir -p ios/Flutter/Flutter.framework/Headers
+          mkdir -p ios/Flutter/Flutter.framework/Modules
+          
+          # Copy engine artifacts
+          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.podspec ios/Flutter/
+          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.framework/Flutter ios/Flutter/Flutter.framework/
+          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.framework/Headers/* ios/Flutter/Flutter.framework/Headers/
+          
+          # Create module map
           echo "framework module Flutter {
             umbrella header 'Flutter.h'
             export *
             module * { export * }
           }" > ios/Flutter/Flutter.framework/Modules/module.modulemap
 
-      - name: Pod Installation
-        script: |
-          cd ios
-          pod deintegrate
-          pod cache clean --all
-          pod repo update
-          pod install --verbose
-          cd ..
-
       - name: Build IPA
         script: |
+          flutter clean
+          flutter pub get
           flutter build ipa \
             --release \
             --no-codesign \
