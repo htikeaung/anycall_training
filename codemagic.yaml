@@ -1,27 +1,33 @@
 workflows:
-  ios-unsigned-build:
-    name: iOS Unsigned Build (Flutter 3.24.4)
+  ios-stable-build:
+    name: iOS Stable Build
     environment:
-      flutter: "3.24.4"  # Pinned to your exact version
+      flutter: "3.24.4"  # Matches your exact version
       xcode: "15.3"      # Recommended for Flutter 3.24.x
-      cocoapods: "1.15.2" # Stable version for this setup
+      cocoapods: "1.15.2" # Stable version
     scripts:
-      # Phase 1: Project Initialization
-      - name: Validate Environment
+      # Phase 1: Environment Setup
+      - name: Setup Environment
         script: |
           flutter --version
           dart --version
-          xcodebuild -version
+          xcode-select --print-path
+          sudo xcode-select --switch /Applications/Xcode-15.3.app
 
-      # Phase 2: Dependency Setup
-      - name: Get Flutter Dependencies
+      # Phase 2: Dependency Resolution
+      - name: Resolve Dependencies
         script: |
           flutter clean
           flutter pub get
           flutter precache --ios --android
+          
+          # Fix deployment targets
+          echo "--- Fixing iOS Deployment Targets ---"
+          find ios -name Podfile -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]\+/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} +
+          find ios -name project.pbxproj -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]\+/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} +
 
-      # Phase 3: iOS-Specific Preparation
-      - name: Prepare iOS Environment
+      # Phase 3: iOS Specific Setup
+      - name: iOS Configuration
         script: |
           cd ios
           pod deintegrate
@@ -29,26 +35,18 @@ workflows:
           pod repo update
           pod install --verbose
           cd ..
-          # Ensure Generated.xcconfig exists
-          ls ios/Flutter/Generated.xcconfig || flutter pub get
+          
+          # Ensure Flutter framework is properly linked
+          flutter build ios --debug --simulator --no-codesign
 
-      # Phase 4: Build Commands (Fixed Format)
-      - name: Build Debug IPA
+      # Phase 4: Main Build
+      - name: Build IPA
         script: |
           flutter build ipa \
-            --debug \
+            --release \
             --no-codesign \
             --dart-define=CI_BUILD=true \
             --verbose
-
-      # Phase 5: Fallback Simulator Build
-      - name: Build Simulator Backup
-        script: |
-          flutter build ios \
-            --debug \
-            --simulator \
-            --no-codesign \
-            --dart-define=CI_BUILD=true
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -60,7 +58,7 @@ workflows:
         recipients:
           - your.email@example.com
       scripts:
-        - name: Archive Build Logs
+        - name: Archive Diagnostics
           script: |
             flutter doctor -v > flutter_doctor.log
             cp $CM_BUILD_LOG flutter_build.log
