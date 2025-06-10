@@ -1,10 +1,7 @@
 workflows:
   development-ipa:
-    name: Development IPA
+    name: Development IPA (Free Apple Account)
     environment:
-      groups:
-        # Add your Apple ID credentials here (Codemagic UI -> Team Settings -> Environment Variables)
-        - apple_developer_credentials # Contains APPLE_ID, APPLE_ID_PASSWORD, and FASTLANE_SESSION
       flutter: stable
       xcode: latest
     scripts:
@@ -13,17 +10,17 @@ workflows:
           keychain initialize
       - name: Install pods
         script: |
-          find . -name "Podfile" -execdir pod install \;
-      - name: Build IPA
+          cd ios && pod install && cd ..
+      - name: Build IPA (Debug/Profile)
         script: |
-          flutter build ipa --debug # or --profile
-          # Alternative using fastlane:
-          # flutter packages pub run flutter_launcher_icons:main
-          # fastlane build_adhoc
+          # Use a free provisioning profile (no paid dev account needed)
+          flutter build ipa --debug --no-codesign  # or --profile
+          
+          # Optional: If you need basic signing (for simulator testing)
+          # xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO
     artifacts:
       - build/ios/ipa/*.ipa
-      - /tmp/flutter_build/logs/*.log
     publishing:
       email:
         recipients:
-          - htikeaung93@gmail.com
+          - htikeaung93@gmail.com  # Replace with your email
