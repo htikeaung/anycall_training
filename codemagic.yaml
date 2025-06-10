@@ -3,11 +3,25 @@ workflows:
     name: Build IPA
     environment:
       flutter: "3.24.4"
+      xcode: "15.3"
     scripts:
-      - name: Build Only
+      - name: Critical Setup
         script: |
+          # Set Flutter framework path (essential fix)
+          export FLUTTER_ROOT=$HOME/programs/flutter
+          mkdir -p ios/Flutter
+          cp -r $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
+
+          # Basic project setup
           flutter clean
           flutter pub get
-          flutter build ipa --release --no-codesign
+
+      - name: Build IPA
+        script: |
+          flutter build ipa \
+            --release \
+            --no-codesign \
+            --dart-define=CI_BUILD=true \
+            --verbose
     artifacts:
       - build/ios/ipa/*.ipa
