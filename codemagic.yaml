@@ -1,46 +1,49 @@
 workflows:
-  reliable-ipa-build:
-    name: Reliable IPA Build
+  bulletproof-ipa-build:
+    name: Bulletproof IPA Build
     environment:
       flutter: "3.24.4"
       xcode: "15.3"
     scripts:
-      - name: Ensure Flutter Engine
+      - name: Complete iOS Reset
         script: |
-          # Force download of iOS artifacts
+          # Backup critical files
+          mkdir -p /tmp/ios_backup
+          cp -r ios/Runner ios/Podfile ios/Flutter/AppFrameworkInfo.plist /tmp/ios_backup/
+          
+          # Full iOS folder regeneration
+          rm -rf ios/
+          flutter create --platforms ios --project-name $(basename $PWD) .
+          
+          # Restore project configuration
+          rm -rf ios/Runner
+          cp -r /tmp/ios_backup/Runner ios/
+          cp /tmp/ios_backup/Podfile ios/
+          [ -f /tmp/ios_backup/AppFrameworkInfo.plist ] && cp /tmp/ios_backup/AppFrameworkInfo.plist ios/Flutter/
+          rm -rf /tmp/ios_backup
+
+      - name: CocoaPods Reinstallation
+        script: |
+          # Clean CocoaPods environment
+          pod cache clean --all
+          gem uninstall cocoapods -a -x
+          brew install cocoapods
+          pod setup
+
+      - name: Build Environment Setup
+        script: |
+          # Ensure Flutter framework exists
           flutter precache --ios
-          
-          # Verify engine exists
-          FLUTTER_ENGINE="$FLUTTER_ROOT/bin/cache/artifacts/engine/ios"
-          if [ ! -d "$FLUTTER_ENGINE" ]; then
-            echo "Flutter engine missing, downloading..."
-            flutter doctor -v
-            flutter pub get
-            flutter precache --force --ios
-          fi
+          mkdir -p ios/Flutter
+          cp -R $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
 
-      - name: Setup Framework Structure
-        script: |
-          # Create framework directory structure
-          mkdir -p ios/Flutter/Flutter.framework/Headers
-          mkdir -p ios/Flutter/Flutter.framework/Modules
-          
-          # Copy engine artifacts
-          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.podspec ios/Flutter/
-          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.framework/Flutter ios/Flutter/Flutter.framework/
-          cp $FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.framework/Headers/* ios/Flutter/Flutter.framework/Headers/
-          
-          # Create module map
-          echo "framework module Flutter {
-            umbrella header 'Flutter.h'
-            export *
-            module * { export * }
-          }" > ios/Flutter/Flutter.framework/Modules/module.modulemap
+          # Pod installation
+          cd ios
+          pod install --repo-update --verbose
+          cd ..
 
-      - name: Build IPA
+      - name: Final IPA Build
         script: |
-          flutter clean
-          flutter pub get
           flutter build ipa \
             --release \
             --no-codesign \
