@@ -2,23 +2,12 @@ workflows:
   build-ipa:
     name: Build IPA
     environment:
-      flutter: "3.24.4"  # Your exact version
-      xcode: "15.3"      # Minimum for Flutter 3.24.x
+      flutter: "3.24.4"
     scripts:
-      # Only essential steps
-      - name: Build Unsigned IPA
+      - name: Build Only
         script: |
           flutter clean
           flutter pub get
-          
-          # Force iOS 12.0 deployment target
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/' ios/Podfile
-          
-          # Build with minimal configuration
-          flutter build ipa \
-            --release \
-            --no-codesign \
-            --dart-define=CI_BUILD=true \
-            --verbose
+          flutter build ipa --release --no-codesign
     artifacts:
-      - build/ios/ipa/*.ipa  # Only export the IPA
+      - build/ios/ipa/*.ipa
