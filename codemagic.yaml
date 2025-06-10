@@ -1,26 +1,49 @@
 workflows:
-  development-ipa:
-    name: Development IPA (Free Apple Account)
+  ios-development:
+    name: iOS Development Build
     environment:
-      flutter: stable
-      xcode: latest
+      flutter: stable  # or specific version like "3.19.5"
+      xcode: latest    # or specific version like "15.2"
+      cocoapods: default
     scripts:
-      - name: Set up keychain
+      # 1. Initialize Flutter
+      - name: Set up Flutter
         script: |
-          keychain initialize
-      - name: Install pods
+          flutter --version
+          flutter clean
+          flutter pub get
+          flutter precache --ios
+
+      # 2. Prepare iOS dependencies
+      - name: Pod setup
         script: |
-          cd ios && pod install && cd ..
-      - name: Build IPA (Debug/Profile)
+          cd ios
+          pod deintegrate  # Clean existing pods
+          pod repo update
+          pod install --repo-update
+          cd ..
+
+      # 3. Build unsigned IPA (works for simulator/testing)
+      - name: Build IPA
         script: |
-          # Use a free provisioning profile (no paid dev account needed)
-          flutter build ipa --debug --no-codesign  # or --profile
-          
-          # Optional: If you need basic signing (for simulator testing)
-          # xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO
+          flutter build ipa \
+            --debug \         # or --profile for performance testing
+            --no-codesign \   # Bypasses Apple Developer account requirement
+            --dart-define=CI_BUILD=true
+
+      # Optional: Build for simulator (alternative to IPA)
+      - name: Build iOS Simulator App
+        script: |
+          flutter build ios --debug --simulator
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa               # Unsigned IPA file
+      - build/ios/iphonesimulator/*.app   # Simulator app bundle
+      - flutter_drive.log                 # Build logs
     publishing:
       email:
         recipients:
-          - htikeaung93@gmail.com  # Replace with your email
+          - your.email@example.com
+      scripts:
+        - name: Notify Success
+          script: |
+            echo "IPA built successfully! Download from Artifacts section."
