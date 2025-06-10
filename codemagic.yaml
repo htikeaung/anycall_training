@@ -1,9 +1,10 @@
 workflows:
   ios-unsigned:
-    name: iOS Unsigned
+    name: iOS Unsigned IPA Build
     environment:
       flutter: stable
       xcode: 15.2
+      cocoapods: 1.16.2  # Use recommended CocoaPods version to avoid pod warnings
     scripts:
       - name: Clean
         script: flutter clean
@@ -14,7 +15,7 @@ workflows:
           cd ios
           pod install --repo-update
           cd ..
-      - name: Build .ipa unsigned
-        script: flutter build ipa --no-codesign
+      - name: Build IPA unsigned
+        script: flutter build ipa --no-codesign --release
     artifacts:
       - build/ios/ipa/*.ipa
