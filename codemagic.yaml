@@ -1,20 +1,38 @@
 workflows:
-  build-ipa:
-    name: Build IPA
+  guaranteed-ipa-build:
+    name: Guaranteed IPA Build
     environment:
       flutter: "3.24.4"
       xcode: "15.3"
     scripts:
-      - name: Critical Setup
+      - name: Complete iOS Reset
         script: |
-          # Set Flutter framework path (essential fix)
-          export FLUTTER_ROOT=$HOME/programs/flutter
-          mkdir -p ios/Flutter
-          cp -r $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
+          # Backup critical files
+          mkdir -p /tmp/ios_backup
+          cp -r ios/Runner ios/Flutter ios/Podfile /tmp/ios_backup/
+          
+          # Nuclear reset
+          rm -rf ios/
+          flutter create --platforms ios --project-name $(basename $PWD) .
+          
+          # Restore project files
+          cp -r /tmp/ios_backup/Runner ios/
+          cp /tmp/ios_backup/Podfile ios/
+          rm -rf /tmp/ios_backup
 
-          # Basic project setup
-          flutter clean
+      - name: Framework & Plugin Repair
+        script: |
+          # Recreate Flutter framework structure
+          mkdir -p ios/Flutter
+          cp -R $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
+          
+          # Force plugin regeneration
           flutter pub get
+          cd ios
+          pod deintegrate
+          pod repo update
+          pod install --verbose
+          cd ..
 
       - name: Build IPA
         script: |
