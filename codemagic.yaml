@@ -1,39 +1,20 @@
 workflows:
   ios-unsigned:
-    name: iOS Unsigned Build
+    name: iOS Unsigned
     environment:
       flutter: stable
-      xcode: latest
-      cocoapods: default
+      xcode: 15.2
     scripts:
-      - name: Clean Flutter
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock pubspec.lock .dart_tool .packages build
-
-      - name: Get dependencies
+      - name: Clean
+        script: flutter clean
+      - name: Install dependencies
         script: flutter pub get
-
-      - name: Build iOS frameworks (no code signing)
-        script: flutter build ios --release --no-codesign
-
-      - name: CocoaPods install
+      - name: Pod install
         script: |
           cd ios
           pod install --repo-update
           cd ..
-
-      - name: Build IPA unsigned
+      - name: Build .ipa unsigned
         script: flutter build ipa --no-codesign
-
     artifacts:
       - build/ios/ipa/*.ipa
-
-    publishing:
-      email:
-        recipients:
-          - htikeaung93@gmail.com
-        notify:
-          success: true
-          failure: true
-
