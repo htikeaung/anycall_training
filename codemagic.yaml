@@ -8,14 +8,22 @@ workflows:
     scripts:
       - name: Install Flutter dependencies
         script: flutter pub get
-      - name: Clean previous builds
+
+      - name: Clean build
         script: flutter clean
-      - name: Run pod install manually
+
+      - name: Generate iOS project files
+        script: flutter build ios --no-codesign
+
+      - name: Install CocoaPods
         script: |
           cd ios
+          rm -rf Pods Podfile.lock
           pod install
           cd ..
+
       - name: Build iOS unsigned IPA
         script: flutter build ipa --no-codesign
+
     artifacts:
       - build/ios/ipa/*.ipa
