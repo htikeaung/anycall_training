@@ -1,35 +1,35 @@
 workflows:
-  guaranteed-ipa-build:
-    name: Guaranteed IPA Build
+  absolute-ipa-build:
+    name: Absolute IPA Build
     environment:
       flutter: "3.24.4"
       xcode: "15.3"
     scripts:
-      - name: Complete iOS Reset
+      - name: Complete Environment Reset
         script: |
-          # Backup critical files
-          mkdir -p /tmp/ios_backup
-          cp -r ios/Runner ios/Flutter ios/Podfile /tmp/ios_backup/
-          
-          # Nuclear reset
-          rm -rf ios/
-          flutter create --platforms ios --project-name $(basename $PWD) .
-          
-          # Restore project files
-          cp -r /tmp/ios_backup/Runner ios/
-          cp /tmp/ios_backup/Podfile ios/
-          rm -rf /tmp/ios_backup
+          # Full cleanup
+          flutter clean
+          rm -rf ios/Flutter ios/Pods ios/.symlinks
+          flutter precache --ios
 
-      - name: Framework & Plugin Repair
+      - name: Framework & Module Setup
         script: |
           # Recreate Flutter framework structure
           mkdir -p ios/Flutter
           cp -R $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
           
-          # Force plugin regeneration
-          flutter pub get
+          # Create modulemap file to fix Swift imports
+          echo "framework module Flutter {
+            umbrella header 'Flutter.h'
+            export *
+            module * { export * }
+          }" > ios/Flutter/Flutter.framework/Modules/module.modulemap
+
+      - name: Pod Installation
+        script: |
           cd ios
           pod deintegrate
+          pod cache clean --all
           pod repo update
           pod install --verbose
           cd ..
