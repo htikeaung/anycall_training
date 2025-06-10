@@ -4,12 +4,15 @@ workflows:
     environment:
       flutter: stable
       xcode: 15.2
-      cocoapods: 1.16.2  # Use recommended CocoaPods version to avoid pod warnings
     scripts:
       - name: Clean
         script: flutter clean
       - name: Install dependencies
         script: flutter pub get
+      - name: Reinstall CocoaPods
+        script: |
+          sudo gem uninstall cocoapods -a -x || true
+          sudo gem install cocoapods -v 1.16.2
       - name: Pod install
         script: |
           cd ios
