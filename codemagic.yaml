@@ -1,6 +1,6 @@
 workflows:
-  ios-workflow:
-    name: iOS Build Workflow
+  ios-build:
+    name: iOS Codemagic Build
     environment:
       flutter: stable
       xcode: 15.2
@@ -8,7 +8,9 @@ workflows:
     scripts:
       - name: Install dependencies
         script: flutter pub get
-      - name: Build iOS release
-        script: flutter build ipa --release
+      - name: Build iOS
+        script: |
+          flutter clean
+          flutter build ipa --release
     artifacts:
       - build/ios/ipa/*.ipa
