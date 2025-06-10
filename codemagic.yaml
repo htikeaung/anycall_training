@@ -1,64 +1,24 @@
 workflows:
-  ios-stable-build:
-    name: iOS Stable Build
+  build-ipa:
+    name: Build IPA
     environment:
-      flutter: "3.24.4"  # Matches your exact version
-      xcode: "15.3"      # Recommended for Flutter 3.24.x
-      cocoapods: "1.15.2" # Stable version
+      flutter: "3.24.4"  # Your exact version
+      xcode: "15.3"      # Minimum for Flutter 3.24.x
     scripts:
-      # Phase 1: Environment Setup
-      - name: Setup Environment
-        script: |
-          flutter --version
-          dart --version
-          xcode-select --print-path
-          sudo xcode-select --switch /Applications/Xcode-15.3.app
-
-      # Phase 2: Dependency Resolution
-      - name: Resolve Dependencies
+      # Only essential steps
+      - name: Build Unsigned IPA
         script: |
           flutter clean
           flutter pub get
-          flutter precache --ios --android
           
-          # Fix deployment targets
-          echo "--- Fixing iOS Deployment Targets ---"
-          find ios -name Podfile -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]\+/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} +
-          find ios -name project.pbxproj -exec sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]\+/IPHONEOS_DEPLOYMENT_TARGET = 12.0/g' {} +
-
-      # Phase 3: iOS Specific Setup
-      - name: iOS Configuration
-        script: |
-          cd ios
-          pod deintegrate
-          pod cache clean --all
-          pod repo update
-          pod install --verbose
-          cd ..
+          # Force iOS 12.0 deployment target
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 12.0/' ios/Podfile
           
-          # Ensure Flutter framework is properly linked
-          flutter build ios --debug --simulator --no-codesign
-
-      # Phase 4: Main Build
-      - name: Build IPA
-        script: |
+          # Build with minimal configuration
           flutter build ipa \
             --release \
             --no-codesign \
             --dart-define=CI_BUILD=true \
             --verbose
-
     artifacts:
-      - build/ios/ipa/*.ipa
-      - build/ios/iphonesimulator/Runner.app
-      - flutter_build.log
-
-    publishing:
-      email:
-        recipients:
-          - your.email@example.com
-      scripts:
-        - name: Archive Diagnostics
-          script: |
-            flutter doctor -v > flutter_doctor.log
-            cp $CM_BUILD_LOG flutter_build.log
+      - build/ios/ipa/*.ipa  # Only export the IPA
