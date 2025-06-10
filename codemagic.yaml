@@ -1,24 +1,29 @@
 workflows:
-  ios-unsigned:
-    name: iOS Unsigned IPA Build
+  development-ipa:
+    name: Development IPA
     environment:
+      groups:
+        # Add your Apple ID credentials here (Codemagic UI -> Team Settings -> Environment Variables)
+        - apple_developer_credentials # Contains APPLE_ID, APPLE_ID_PASSWORD, and FASTLANE_SESSION
       flutter: stable
-      xcode: 15.2
+      xcode: latest
     scripts:
-      - name: Clean
-        script: flutter clean
-      - name: Install dependencies
-        script: flutter pub get
-      - name: Reinstall CocoaPods (compatible with Ruby 2.6)
+      - name: Set up keychain
         script: |
-          sudo gem uninstall cocoapods -a -x || true
-          sudo gem install cocoapods -v 1.11.3
-      - name: Pod install
+          keychain initialize
+      - name: Install pods
         script: |
-          cd ios
-          pod install --repo-update
-          cd ..
-      - name: Build IPA unsigned
-        script: flutter build ipa --no-codesign --release
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build IPA
+        script: |
+          flutter build ipa --debug # or --profile
+          # Alternative using fastlane:
+          # flutter packages pub run flutter_launcher_icons:main
+          # fastlane build_adhoc
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/flutter_build/logs/*.log
+    publishing:
+      email:
+        recipients:
+          - htikeaung93@gmail.com
