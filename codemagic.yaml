@@ -1,9 +1,9 @@
 workflows:
-  ios-unsigned:
-    name: iOS Unsigned Build
+  ios-release:
+    name: iOS Release Build
     environment:
       flutter: stable
-      xcode: 15.2
+      xcode: latest
       cocoapods: default
     scripts:
       - name: Clean Flutter
@@ -28,3 +28,8 @@ workflows:
 
     artifacts:
       - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
