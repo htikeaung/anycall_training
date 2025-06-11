@@ -2,49 +2,18 @@ workflows:
   ios-workflow:
     name: iOS Build Workflow
     environment:
-      groups:
-        - app_store_credentials  # Add your certificates group here
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
-        BUNDLE_ID: "com.anycallmobile.anycallmobile_trainingcenter"
     scripts:
-      - name: Clean project
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
-      - name: Get dependencies
+      - name: Install dependencies
         script: |
           flutter pub get
           cd ios
-          pod install --repo-update
+          pod install
           cd ..
-      - name: Set up code signing
+      - name: Build IPA (unsigned)
         script: |
-          # Create keychain
-          security create-keychain -p temp build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p temp build.keychain
-          
-          # Import certificate
-          echo $APP_STORE_CERTIFICATE | base64 --decode > certificate.p12
-          security import certificate.p12 -P $APP_STORE_CERTIFICATE_PASSWORD -A -t cert -f pkcs12 -k build.keychain
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp build.keychain
-          rm certificate.p12
-          
-          # Install provisioning profile
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
-          echo $APP_STORE_PROVISIONING_PROFILE | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-          
-      - name: Build IPA
-        script: |
-          flutter build ipa --release \
-            --export-options-plist=ios/ExportOptions.plist \
-            --no-codesign
+          flutter build ipa --release --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
