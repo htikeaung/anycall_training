@@ -6,7 +6,7 @@ workflows:
       xcode: 15.2
       cocoapods: default
     scripts:
-      - name: Flutter clean and recreate ios folder
+      - name: Clean & recreate ios folder
         script: |
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
@@ -14,18 +14,14 @@ workflows:
           flutter create .
           flutter pub get
 
-      - name: Restore Runner backup (if you have it)
+      - name: Set iOS deployment target to 13.0
         script: |
-          # If you backed up Runner, copy it back here
-          # cp -r backup/Runner ios/
+          sed -i '' 's/platform :ios, .*/platform :ios, '\''13.0'\''/' ios/Podfile
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/' ios/Runner.xcodeproj/project.pbxproj
 
-      - name: Install CocoaPods via Homebrew (forced update)
+      - name: Install CocoaPods
         script: |
           brew install cocoapods || brew link --overwrite cocoapods
-          pod setup
-
-      - name: Install pods
-        script: |
           cd ios
           pod install --repo-update
           cd ..
