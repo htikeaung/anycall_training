@@ -3,7 +3,7 @@ workflows:
     name: iOS Build Workflow
     environment:
       groups:
-        - app_store_credentials
+        - app_store_credentials  # Add your certificates group here
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
@@ -19,24 +19,32 @@ workflows:
           cd ios
           pod install --repo-update
           cd ..
+      - name: Set up code signing
+        script: |
+          # Create keychain
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          
+          # Import certificate
+          echo $APP_STORE_CERTIFICATE | base64 --decode > certificate.p12
+          security import certificate.p12 -P $APP_STORE_CERTIFICATE_PASSWORD -A -t cert -f pkcs12 -k build.keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k temp build.keychain
+          rm certificate.p12
+          
+          # Install provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles/
+          echo $APP_STORE_PROVISIONING_PROFILE | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          
       - name: Build IPA
         script: |
-          # Create ExportOptions.plist if missing
-          if [ ! -f "ios/ExportOptions.plist" ]; then
-            echo '<?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-                <key>method</key>
-                <string>app-store</string>
-                <key>uploadBitcode</key>
-                <false/>
-                <key>uploadSymbols</key>
-                <true/>
-            </dict>
-            </plist>' > ios/ExportOptions.plist
-          fi
-          
-          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
