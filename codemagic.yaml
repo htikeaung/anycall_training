@@ -30,10 +30,10 @@ workflows:
           pod install
           cd ..
           
-      # 4. Build for simulator (unsigned)
-      - name: Build for iOS Simulator
+      # 4. Build debug version for simulator
+      - name: Build for iOS Simulator (Debug)
         script: |
-          flutter build ios --simulator --release --no-codesign
+          flutter build ios --simulator --debug
           
     artifacts:
       - build/ios/iphonesimulator/Runner.app
