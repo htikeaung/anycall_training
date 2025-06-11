@@ -1,53 +1,27 @@
 workflows:
-  bulletproof-ipa-build:
-    name: Bulletproof IPA Build
+  ios-unsigned:
+    name: iOS Unsigned Build
     environment:
-      flutter: "3.24.4"
-      xcode: "15.3"
+      flutter: stable
+      xcode: 15.2
+      cocoapods: default
     scripts:
-      - name: Complete iOS Reset
+      - name: Reinstall CocoaPods with Homebrew
         script: |
-          # Backup critical files
-          mkdir -p /tmp/ios_backup
-          cp -r ios/Runner ios/Podfile ios/Flutter/AppFrameworkInfo.plist /tmp/ios_backup/
-          
-          # Full iOS folder regeneration
-          rm -rf ios/
-          flutter create --platforms ios --project-name $(basename $PWD) .
-          
-          # Restore project configuration
-          rm -rf ios/Runner
-          cp -r /tmp/ios_backup/Runner ios/
-          cp /tmp/ios_backup/Podfile ios/
-          [ -f /tmp/ios_backup/AppFrameworkInfo.plist ] && cp /tmp/ios_backup/AppFrameworkInfo.plist ios/Flutter/
-          rm -rf /tmp/ios_backup
-
-      - name: CocoaPods Reinstallation
-        script: |
-          # Clean CocoaPods environment
-          pod cache clean --all
-          gem uninstall cocoapods -a -x
+          brew uninstall cocoapods || true
           brew install cocoapods
           pod setup
-
-      - name: Build Environment Setup
+      - name: Clean previous builds
+        script: flutter clean
+      - name: Get Flutter dependencies
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
         script: |
-          # Ensure Flutter framework exists
-          flutter precache --ios
-          mkdir -p ios/Flutter
-          cp -R $FLUTTER_ROOT/bin/cache/artifacts/engine/ios-release/Flutter.framework ios/
-
-          # Pod installation
           cd ios
-          pod install --repo-update --verbose
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
           cd ..
-
-      - name: Final IPA Build
-        script: |
-          flutter build ipa \
-            --release \
-            --no-codesign \
-            --dart-define=CI_BUILD=true \
-            --verbose
+      - name: Build unsigned IPA
+        script: flutter build ipa --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
