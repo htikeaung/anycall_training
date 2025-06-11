@@ -6,33 +6,31 @@ workflows:
       xcode: 15.2
       cocoapods: default
     scripts:
-      - name: Clean Flutter and Pod cache
+      - name: Flutter clean and recreate ios folder
         script: |
           flutter clean
-          flutter pub cache repair || true
-          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter/Flutter.framework
-          rm -rf ~/Library/Caches/CocoaPods ~/.cocoapods
-          pod cache clean --all || true
-
-      - name: Ensure Flutter SDK and tools are available
-        script: |
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks ios/Flutter
+          rm -rf ios
+          flutter create .
           flutter pub get
-          flutter precache
-          flutter doctor -v
 
-      - name: Install CocoaPods with Homebrew
+      - name: Restore Runner backup (if you have it)
         script: |
-          brew uninstall cocoapods || true
-          brew install cocoapods
+          # If you backed up Runner, copy it back here
+          # cp -r backup/Runner ios/
+
+      - name: Install CocoaPods via Homebrew (forced update)
+        script: |
+          brew install cocoapods || brew link --overwrite cocoapods
           pod setup
 
-      - name: Pod install clean
+      - name: Install pods
         script: |
           cd ios
           pod install --repo-update
           cd ..
 
-      - name: Build unsigned IPA
+      - name: Build IPA (unsigned)
         script: flutter build ipa --no-codesign
     artifacts:
       - build/ios/ipa/*.ipa
