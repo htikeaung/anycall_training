@@ -6,34 +6,33 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
     scripts:
-      # 1. Clean and prepare environment
-      - name: Clean project
+      # 1. Full clean and Flutter setup
+      - name: Clean and prepare
         script: |
           flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
-          
-      # 2. Get dependencies with proper Flutter linking
-      - name: Get dependencies
-        script: |
+          rm -rf ios/Pods ios/Podfile.lock ios/Flutter/Flutter.podspec
           flutter pub get
+          flutter precache --ios
+          
+      # 2. Special Podfile modification
+      - name: Modify Podfile
+        script: |
+          echo "Modifying Podfile for Flutter compatibility..."
+          sed -i '' $'s/use_frameworks!/use_frameworks!\\\n  config.build_settings[\'BUILD_LIBRARY_FOR_DISTRIBUTION\'] = \'YES\'\\\n  config.build_settings[\'OTHER_SWIFT_FLAGS\'] = \'-Xcc -fmodule-map-file=${PODS_ROOT}/../.symlinks/flutter/ios-release/Flutter.modulemap\'/' ios/Podfile
+          
+      # 3. Pod installation with fixes
+      - name: Install pods
+        script: |
           cd ios
           pod install --repo-update
           cd ..
           
-      # 3. Fix Flutter.h header issues
-      - name: Fix Flutter framework paths
+      # 4. Build for simulator with debug config
+      - name: Build for simulator
         script: |
-          echo "Fixing Flutter framework paths..."
-          flutter precache --ios
-          find ios -name "Podfile" -exec sed -i '' "s/use_frameworks!/use_frameworks! :linkage => :static/" {} \;
-          cd ios
-          pod install
-          cd ..
-          
-      # 4. Build debug version for simulator
-      - name: Build for iOS Simulator (Debug)
-        script: |
-          flutter build ios --simulator --debug
+          flutter build ios --simulator --debug \
+            --dart-define=FLUTTER_BUILD_MODE=debug \
+            --no-codesign
           
     artifacts:
       - build/ios/iphonesimulator/Runner.app
