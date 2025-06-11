@@ -5,11 +5,14 @@ workflows:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
-        BUNDLE_ID: "com.anycallmobile.anycallmobile_trainingcenter" # Replace with your bundle ID
+        BUNDLE_ID: "com.anycallmobile.anycallmobile_trainingcenter"
     scripts:
       - name: Install Flutter dependencies
         script: flutter pub get
       - name: Build IPA
-        script: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+        script: |
+          flutter build ipa --release \
+            --export-method app-store \
+            --no-codesign  # Let Codemagic handle signing
     artifacts:
       - build/ios/ipa/*.ipa
