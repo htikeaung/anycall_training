@@ -6,14 +6,34 @@ workflows:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
     scripts:
-      - name: Install dependencies
+      # 1. Clean and prepare environment
+      - name: Clean project
+        script: |
+          flutter clean
+          rm -rf ios/Pods ios/Podfile.lock
+          
+      # 2. Get dependencies with proper Flutter linking
+      - name: Get dependencies
         script: |
           flutter pub get
           cd ios
+          pod install --repo-update
+          cd ..
+          
+      # 3. Fix Flutter.h header issues
+      - name: Fix Flutter framework paths
+        script: |
+          echo "Fixing Flutter framework paths..."
+          flutter precache --ios
+          find ios -name "Podfile" -exec sed -i '' "s/use_frameworks!/use_frameworks! :linkage => :static/" {} \;
+          cd ios
           pod install
           cd ..
-      - name: Build IPA (unsigned)
+          
+      # 4. Build for simulator (unsigned)
+      - name: Build for iOS Simulator
         script: |
-          flutter build ipa --release --no-codesign
+          flutter build ios --simulator --release --no-codesign
+          
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/iphonesimulator/Runner.app
